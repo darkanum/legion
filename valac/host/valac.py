@@ -158,7 +158,7 @@ def fix(finding: dict, issue: int) -> None:
         body += f"\n\nCloses #{issue}"
     body += f"\n\n_Valac opened this PR from its patrol. Score: {finding.get('score')}. An engineer reviews and merges it._"
     slug = re.sub(r"[^a-z0-9]+", "-", title.lower().removeprefix("fix: ")).strip("-")[:40].strip("-")
-    opened = open_pull_request(SERVICE, str(issue), base, f"fix/issue-{issue}-{slug}", patch, title, body)
+    opened = open_pull_request(SERVICE, str(issue), base, f"fix/issue-{issue}-{slug}", patch, title, body, planned["plan"])
     store_record.update(state="pr_open", pr=opened["pr"])
     ledger.save(STORE, store_record)
     axiom.emit(SERVICE, "valac.pr.opened", f"PR #{opened['pr']} for #{issue}", finding["fingerprint"],

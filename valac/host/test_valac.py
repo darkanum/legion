@@ -328,8 +328,9 @@ class FixTest(unittest.TestCase):
 
     def test_a_patch_inside_its_plan_opens_the_pr_that_closes_the_issue(self):
         opened, record = self.fix(PATCH)
-        service, issue, base, branch, _, title, body = opened.call_args.args
+        service, issue, base, branch, _, title, body, plan = opened.call_args.args
         self.assertEqual((service, issue, branch), ("valac", "4800", "fix/issue-4800-retry-expired-database-transactions"))
+        self.assertEqual(plan, PLAN["plan"])
         self.assertEqual(title, "fix: retry expired Database transactions")
         self.assertIn("Closes #4800", body)
         self.assertNotIn("Co-Authored-By", body)

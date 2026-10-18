@@ -172,7 +172,7 @@ def open_pr(issue: str, run_dir: Path, result: dict, plan: dict) -> dict:
     title = config.TITLE_PREFIX.sub("", github(f"repos/{REPO}/issues/{issue}")["title"])
     slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:40].strip("-")
     pr_title, body = pr_text(issue, title, result, plan)
-    return open_pull_request(SERVICE, issue, base, f"fix/issue-{issue}-{slug}", patch, pr_title, body)
+    return open_pull_request(SERVICE, issue, base, f"fix/issue-{issue}-{slug}", patch, pr_title, body, plan)
 
 
 def pr_text(issue: str, title: str, result: dict, plan: dict) -> tuple[str, str]:
@@ -217,7 +217,7 @@ def push_fix(branch: str, run_dir: Path, plan: dict, message: str) -> dict:
         return {"error": error}
     if not re.fullmatch(r"fix/issue-\d+-[a-z0-9-]+", branch):
         return {"error": "the PR branch is not a Marbas branch"}
-    return {"sha": commit_patch(github("user"), branch, branch, patch, no_mention(message).splitlines()[0][:72])}
+    return {"sha": commit_patch(github("user"), branch, branch, patch, no_mention(message).splitlines()[0][:72], plan)}
 
 
 def answer_review(number: int, login: str, reply: str, sha: str, attempt: int) -> bool:

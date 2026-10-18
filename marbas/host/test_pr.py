@@ -104,6 +104,7 @@ class OpenPrTest(unittest.TestCase):
                  mock.patch.object(pull_request, "github", side_effect=github), \
                  mock.patch.object(pull_request, "git"), mock.patch.object(pull_request, "git_auth", return_value="h"), \
                  mock.patch.object(pull_request.axiom, "emit") as emit, \
+                 mock.patch.object(pull_request, "staged_paths", return_value=pull_request.patch_paths(PATCH)), \
                  mock.patch.object(pull_request, "PR_TEAM_REVIEWERS", ["engineering"]):
                 return pr.open_pr("7", run_dir, {"score": 80}, PLAN), calls, emit
 

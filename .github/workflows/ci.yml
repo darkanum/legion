@@ -54,6 +54,10 @@ jobs:
   secrets:
     name: No secret in the tree
     runs-on: ubuntu-latest
+    # The action lists the PR's commits, so it needs to read pull requests.
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:

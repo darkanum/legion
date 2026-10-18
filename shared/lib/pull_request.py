@@ -33,10 +33,27 @@ def without_attribution(text: str) -> str:
     return "\n".join(line for line in text.splitlines() if not ATTRIBUTION.search(line))
 
 
+HEADER = re.compile(r"^diff --git a/(\S+) b/(\S+)$")
+
+
+class ScopeRefused(RuntimeError):
+    """The patch reaches outside its plan or onto a guarded path. The message names the path and holds no secret."""
+
+    public = True  # github.describe() may show the message as it is
+
+
 def patch_paths(patch: str) -> set[str]:
+    """Both paths of every file header. A header the pattern cannot read (a quoted name, a space) is kept whole, so
+    it can never match the plan and the scope check fails closed. commit_patch() checks git's own list again."""
     paths = set()
-    for a, b in re.findall(r"^diff --git a/(\S+) b/(\S+)$", patch, re.MULTILINE):
-        paths.update((a, b))
+    for line in patch.splitlines():
+        if not line.startswith("diff --git "):
+            continue
+        header = HEADER.match(line)
+        if header:
+            paths.update(header.groups())
+        else:
+            paths.add(f"<unreadable diff header: {line[11:80]}>")
     return paths
 
 
@@ -56,8 +73,16 @@ def git(cwd: Path, *args: str) -> None:
     subprocess.run(["git", "-c", "core.hooksPath=/dev/null", *args], cwd=cwd, check=True, capture_output=True, text=True)
 
 
-def commit_patch(me: dict, ref: str, branch: str, patch: str, message: str) -> str:
-    """Applies the patch on `ref` as `branch`, commits as the host account and pushes. Returns the new commit sha."""
+def staged_paths(repo: Path) -> set[str]:
+    """Every path the applied patch changes, from git itself. --no-renames lists both sides of a rename."""
+    done = subprocess.run(["git", "-c", "core.hooksPath=/dev/null", "diff", "--cached", "--name-only", "--no-renames",
+                           "-z", "HEAD"], cwd=repo, check=True, capture_output=True, text=True)
+    return {path for path in done.stdout.split("\0") if path}
+
+
+def commit_patch(me: dict, ref: str, branch: str, patch: str, message: str, plan: dict) -> str:
+    """Applies the patch on `ref` as `branch`, checks the scope on git's own list of the changed paths, commits as the
+    host account and pushes. Returns the new commit sha. Raises ScopeRefused before any push when the scope fails."""
     header = git_auth()
     with tempfile.TemporaryDirectory() as tmp:
         repo = Path(tmp) / "repo"
@@ -68,19 +93,24 @@ def commit_patch(me: dict, ref: str, branch: str, patch: str, message: str) -> s
         git(repo, "-c", header, "fetch", "-q", "--depth", "1", "origin", ref)
         git(repo, "checkout", "-q", "-b", branch, "FETCH_HEAD")
         git(repo, "apply", "--index", "--binary", str(Path(tmp) / "fix.patch"))
+        # The patch text is a model's output: the paths git applied are the ones that count, not the ones it names.
+        if error := scope_error(staged_paths(repo), plan):
+            raise ScopeRefused(error)
         git(repo, "-c", f"user.name={me['login']}", "-c", f"user.email={me['id']}+{me['login']}@users.noreply.github.com",
             "commit", "-q", "-m", message)
         git(repo, "-c", header, "push", "-q", "origin", f"HEAD:refs/heads/{branch}")
         return subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True).stdout.strip()
 
 
-def open_pull_request(service: str, issue: str, base_sha: str, branch: str, patch: str, title: str, body: str) -> dict:
+def open_pull_request(service: str, issue: str, base_sha: str, branch: str, patch: str, title: str, body: str,
+                      plan: dict) -> dict:
     """Pushes the patch on commit `base_sha` as `branch`, then opens the PR against the base branch. Returns {"pr", "url"}.
 
-    The caller checks the scope first. Reviewers, assignee and labels are best effort: the PR is open already.
+    The caller checks the scope on the patch text first; commit_patch() checks it again on what git applied.
+    Reviewers, assignee and labels are best effort: the PR is open already.
     """
     me = github("user")
-    commit_patch(me, base_sha, branch, patch, f"{title}\n\nCloses #{issue}.")
+    commit_patch(me, base_sha, branch, patch, f"{title}\n\nCloses #{issue}.", plan)
     pr = github(f"repos/{REPO}/pulls", method="POST",
                 body={"title": title, "head": branch, "base": config.BASE_BRANCH, "body": body})
     # One call each, so a refused team request (GitHub answers 422 for a team with no access) still requests the people.

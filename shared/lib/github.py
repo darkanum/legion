@@ -108,4 +108,6 @@ def describe(error: Exception) -> str:
         return f"GitHub answered *{error.code}* on `{path}`"
     if isinstance(error, subprocess.CalledProcessError):
         return "a git command failed (for example, the patch does not apply)"
+    if getattr(error, "public", False):
+        return str(error)  # an error written by the host for people, as pull_request.ScopeRefused
     return type(error).__name__
