@@ -1,0 +1,17 @@
+{
+  "agent": "orobas",
+  "events": {
+    "pull_request": [
+      "opened",
+      "reopened",
+      "ready_for_review",
+      "synchronize",
+      "review_requested",
+      "edited",
+      "labeled",
+      "unlabeled",
+      "closed"
+    ],
+    "check_suite": ["completed"]
+  }
+}

@@ -1,0 +1,15 @@
+# The Legion GitHub webhook service. Root, like the agent hosts, because it writes into their workspace folders.
+[Unit]
+Description=Legion GitHub webhook service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+# LEGION_AGENTS: on a VM with one agent, only that agent's subscriptions load.
+EnvironmentFile=-/opt/legion/legion.env
+ExecStart=/opt/legion/venv/bin/python /opt/legion/repo/shared/hooks/host/hooks.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

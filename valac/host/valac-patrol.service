@@ -1,0 +1,12 @@
+# Valac's patrol: read the production logs, open an issue per new defect, and a PR when the switch allows.
+# The timer starts it. Every switch lives in /opt/legion/legion.env (VALAC_*); change it there, then run ./setup.sh valac.
+[Unit]
+Description=Valac log patrol
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/opt/legion/legion.env
+ExecStart=/opt/legion/venv/bin/python /opt/legion/repo/valac/host/valac.py
+TimeoutStartSec=4h

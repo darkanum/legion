@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Runs one APL query on Axiom with the read-only token and prints the result table as JSON.
+# The agent's only way to Axiom: curl is denied in the sandbox. Usage: legion-axiom "['<dataset>'] | where ... | limit 50"
+set -euo pipefail
+[ $# -eq 1 ] || { echo "usage: legion-axiom '<APL query>'" >&2; exit 2; }
+jq -n --arg apl "$1" '{apl: $apl}' \
+  | curl -sS --fail-with-body --max-time 60 -X POST \
+      -H "Authorization: Bearer ${AXIOM_TOKEN:?}" -H "Content-Type: application/json" \
+      --data @- "https://api.axiom.co/v1/datasets/_apl?format=tabular" \
+  | jq -c '.tables[0] | {fields: [.fields[].name], rows: (.columns | transpose)}' \
+  | head -c 60000

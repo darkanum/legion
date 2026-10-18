@@ -1,0 +1,25 @@
+# The one public door of a Legion host. shared/host/setup.sh puts LEGION_HOSTNAME in place of the site name below.
+# Caddy gets the certificate itself; only the webhook path reaches the hooks service, everything else is a 404.
+LEGION_HOSTNAME {
+	encode zstd gzip
+
+	handle /webhooks/github {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy 127.0.0.1:8645
+	}
+
+	handle /healthz {
+		respond "ok" 200
+	}
+
+	handle {
+		respond 404
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Runs one HogQL query on the PostHog project with the read-only key and prints the rows as JSON.
+# The agent's only way to PostHog: curl is denied in the sandbox. Write time literals as toDateTime('...', 'UTC').
+set -euo pipefail
+[ $# -eq 1 ] || { echo "usage: legion-posthog '<HogQL query>'" >&2; exit 2; }
+jq -n --arg q "$1" '{query: {kind: "HogQLQuery", query: $q}}' \
+  | curl -sS --fail-with-body --max-time 60 -X POST \
+      -H "Authorization: Bearer ${POSTHOG_API_KEY:?}" -H "Content-Type: application/json" \
+      --data @- "https://${POSTHOG_HOST:-us.posthog.com}/api/projects/${POSTHOG_PROJECT_ID:?}/query/" \
+  | jq -c '{columns, results}' \
+  | head -c 60000

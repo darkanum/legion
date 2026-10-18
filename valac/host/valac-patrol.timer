@@ -1,0 +1,11 @@
+# When the patrol runs. valac/setup.sh puts VALAC_SCHEDULE from legion.env in place of the line below, a systemd
+# calendar such as `Mon..Fri *-*-* 07:00:00 UTC`. Persistent runs a missed patrol at boot.
+[Unit]
+Description=Valac log patrol schedule
+
+[Timer]
+OnCalendar=VALAC_SCHEDULE
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests (${{ matrix.folder }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every folder with tests. A new agent adds its host/ folder here.
+        folder: [shared/lib, shared/hooks/host, shared/sandbox, marbas/host, valac/host, orobas/host]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Plain unittest with no install: the test run proves the hosts need nothing outside the standard library.
+      - name: Run the tests
+        working-directory: ${{ matrix.folder }}
+        run: python3 -m unittest -v
+
+  shell:
+    name: Shell scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: |
+          sudo apt-get install -y -qq shellcheck
+          git ls-files '*.sh' 'shared/sandbox/bin/*' | xargs shellcheck -x -S warning
+
+  image:
+    name: Sandbox image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the sandbox and proxy images
+        run: |
+          python3 shared/sandbox/settings.py /tmp/legion
+          cp /tmp/legion/managed-settings.json shared/sandbox/managed-settings.generated.json
+          cp /tmp/legion/allowlist shared/sandbox/proxy/allowlist.generated
+          docker build -q -t legion-proxy:ci shared/sandbox/proxy
+          docker build -q -t legion-sandbox:ci shared/sandbox
+          docker run --rm --entrypoint bash legion-sandbox:ci -c 'claude --version && gh --version | head -1 && jq --version'
+
+  secrets:
+    name: No secret in the tree
+    runs-on: ubuntu-latest
+    # The action lists the PR's commits, so it needs to read pull requests.
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
