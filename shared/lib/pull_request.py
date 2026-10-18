@@ -14,7 +14,7 @@ from pathlib import Path
 import axiom
 import config
 # The skills refuse GUARDED paths; scope_error refuses them again, because the patch is the output of a model.
-from github import ATTRIBUTION, ENV_FILE, GUARDED, REPO, describe, git_auth, github
+from github import ATTRIBUTION, ENV_FILE, GUARDED, REPO, describe, git_auth, github, me
 
 # Every bot PR: the bot account is the assignee, and LEGION_PR_REVIEWERS plus LEGION_PR_TEAM_REVIEWERS review it.
 PR_REVIEWERS = config.PR_REVIEWERS
@@ -80,7 +80,7 @@ def staged_paths(repo: Path) -> set[str]:
     return {path for path in done.stdout.split("\0") if path}
 
 
-def commit_patch(me: dict, ref: str, branch: str, patch: str, message: str, plan: dict) -> str:
+def commit_patch(bot: dict, ref: str, branch: str, patch: str, message: str, plan: dict) -> str:
     """Applies the patch on `ref` as `branch`, checks the scope on git's own list of the changed paths, commits as the
     host account and pushes. Returns the new commit sha. Raises ScopeRefused before any push when the scope fails."""
     header = git_auth()
@@ -96,7 +96,7 @@ def commit_patch(me: dict, ref: str, branch: str, patch: str, message: str, plan
         # The patch text is a model's output: the paths git applied are the ones that count, not the ones it names.
         if error := scope_error(staged_paths(repo), plan):
             raise ScopeRefused(error)
-        git(repo, "-c", f"user.name={me['login']}", "-c", f"user.email={me['id']}+{me['login']}@users.noreply.github.com",
+        git(repo, "-c", f"user.name={bot['login']}", "-c", f"user.email={bot['id']}+{bot['login']}@users.noreply.github.com",
             "commit", "-q", "-m", message)
         git(repo, "-c", header, "push", "-q", "origin", f"HEAD:refs/heads/{branch}")
         return subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True).stdout.strip()
@@ -109,8 +109,8 @@ def open_pull_request(service: str, issue: str, base_sha: str, branch: str, patc
     The caller checks the scope on the patch text first; commit_patch() checks it again on what git applied.
     Reviewers, assignee and labels are best effort: the PR is open already.
     """
-    me = github("user")
-    commit_patch(me, base_sha, branch, patch, f"{title}\n\nCloses #{issue}.", plan)
+    bot = me()
+    commit_patch(bot, base_sha, branch, patch, f"{title}\n\nCloses #{issue}.", plan)
     pr = github(f"repos/{REPO}/pulls", method="POST",
                 body={"title": title, "head": branch, "base": config.BASE_BRANCH, "body": body})
     # One call each, so a refused team request (GitHub answers 422 for a team with no access) still requests the people.
@@ -127,7 +127,7 @@ def open_pull_request(service: str, issue: str, base_sha: str, branch: str, patc
                        f"pr-{pr['number']}", level="warn", module="pr", issue=int(issue), pr=pr["number"],
                        errorType=type(error).__name__, errorMessage=f"{describe(error)} {reason}".strip())
     try:
-        github(f"repos/{REPO}/issues/{pr['number']}/assignees", method="POST", body={"assignees": [me["login"]]})
+        github(f"repos/{REPO}/issues/{pr['number']}/assignees", method="POST", body={"assignees": [bot["login"]]})
     except Exception as error:
         log.warning("could not assign PR #%s: %s", pr["number"], describe(error))
     try:

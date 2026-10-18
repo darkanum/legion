@@ -159,7 +159,7 @@ _me = ""
 
 def me() -> str:
     global _me
-    _me = _me or gh.github("user")["login"]
+    _me = _me or gh.me()["login"]
     return _me
 
 
@@ -842,15 +842,21 @@ def main() -> None:
     threading.Thread(target=work, daemon=True).start()
     while True:
         try:
-            inbox_module().consume(SERVICE, (lambda event: handle(event, time.time())) if ENABLED else (lambda event: None),
-                                   event_failed)
-            if ENABLED:
-                release(time.time())
+            tick(time.time())
         except Exception as error:
             log.exception("the inbox loop failed")
             axiom.emit(SERVICE, "orobas.review.failed", "the inbox loop failed", "inbox", level="error", stage="inbox",
                        errorType=type(error).__name__, errorMessage=describe(error))
         time.sleep(INBOX_SECONDS)
+
+
+def tick(now: float) -> None:
+    """One turn of the inbox loop. Switched off, Orobas leaves the events in the inbox, so turning it back on
+    (./setup.sh orobas restarts the service) reviews what arrived meanwhile instead of nothing."""
+    if not ENABLED:
+        return
+    inbox_module().consume(SERVICE, lambda event: handle(event, now), event_failed)
+    release(now)
 
 
 def event_failed(event: dict, error: Exception) -> None:

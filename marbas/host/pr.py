@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "shared" / "lib"))
 import config  # noqa: E402
-from github import ENV_FILE, GUARDED, REPO, SECRETS, checks_state, describe, github, team_logins  # noqa: E402
+from github import ENV_FILE, GUARDED, REPO, checks_state, describe, github, me, team_logins, token  # noqa: E402
 from pull_request import commit_patch, no_mention, open_pull_request, patch_paths, scope_error, without_attribution  # noqa: E402
 
 SERVICE = "marbas"  # the Axiom `service`
@@ -72,7 +72,7 @@ def job_log_tail(job_id: int) -> str:
     """The end of a job log. GitHub answers with a redirect to signed storage, which must not get our token."""
     request = urllib.request.Request(
         f"https://api.github.com/repos/{REPO}/actions/jobs/{job_id}/logs",
-        headers={"Authorization": f"Bearer {(SECRETS / 'github_host_token').read_text().strip()}",
+        headers={"Authorization": f"Bearer {token()}",
                  "Accept": "application/vnd.github+json", "User-Agent": config.USER_AGENT})
     try:
         urllib.request.build_opener(_NoRedirect).open(request, timeout=20)
@@ -217,7 +217,7 @@ def push_fix(branch: str, run_dir: Path, plan: dict, message: str) -> dict:
         return {"error": error}
     if not re.fullmatch(r"fix/issue-\d+-[a-z0-9-]+", branch):
         return {"error": "the PR branch is not a Marbas branch"}
-    return {"sha": commit_patch(github("user"), branch, branch, patch, no_mention(message).splitlines()[0][:72], plan)}
+    return {"sha": commit_patch(me(), branch, branch, patch, no_mention(message).splitlines()[0][:72], plan)}
 
 
 def answer_review(number: int, login: str, reply: str, sha: str, attempt: int) -> bool:

@@ -51,6 +51,22 @@ class MigrateTest(unittest.TestCase):
         self.assertEqual(reviewer.migrate({"sha": SHA, "stage": "running"})["stage"], "running")
 
 
+class SwitchTest(Base):
+    def test_switched_off_the_events_stay_in_the_inbox(self):
+        with mock.patch.object(reviewer, "ENABLED", False), mock.patch.object(reviewer, "inbox_module") as inbox, \
+                mock.patch.object(reviewer, "release") as release:
+            reviewer.tick(100.0)
+        inbox.return_value.consume.assert_not_called()
+        release.assert_not_called()
+
+    def test_switched_on_the_inbox_is_read_and_quiet_heads_are_released(self):
+        with mock.patch.object(reviewer, "ENABLED", True), mock.patch.object(reviewer, "inbox_module") as inbox, \
+                mock.patch.object(reviewer, "release") as release:
+            reviewer.tick(100.0)
+        self.assertEqual(inbox.return_value.consume.call_args.args[0], "orobas")
+        release.assert_called_once_with(100.0)
+
+
 class SaveTest(Base):
     def test_a_stage_change_emits_once(self):
         reviewer.update(7, sha=SHA, stage="waiting")

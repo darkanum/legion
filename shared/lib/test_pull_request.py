@@ -117,6 +117,7 @@ class OpenPullRequestTest(unittest.TestCase):
         with mock.patch.object(pr, "github", side_effect=fake_github(calls, refuse_team)), mock.patch.object(pr, "git"), \
              mock.patch.object(pr, "git_auth", return_value="h"), mock.patch.object(pr.axiom, "emit") as emit, \
              mock.patch.object(pr, "staged_paths", return_value=pr.patch_paths(PATCH)), \
+             mock.patch.object(pr, "me", return_value={"login": "legion-bot", "id": 1}), \
              mock.patch.object(pr, "REPO", "acme/shop"), mock.patch.object(pr.config, "BASE_BRANCH", "main"), \
              mock.patch.object(pr, "PR_REVIEWERS", list(people)), mock.patch.object(pr, "PR_TEAM_REVIEWERS", list(teams)):
             result = pr.open_pull_request("valac", "7", "a" * 40, "fix/x", PATCH, "fix: x", "body", PLAN)

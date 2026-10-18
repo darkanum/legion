@@ -3,9 +3,9 @@
 FROM node:22-bookworm-slim
 
 ARG EXTRA_APT=""
-# The Claude Code CLI version. Pin one (--build-arg CLAUDE_CODE_VERSION=x.y.z, or a LEGION_SANDBOX_DOCKERFILE) so a CLI
-# release never changes the agents under a running host; latest is the default only so a first build works.
-ARG CLAUDE_CODE_VERSION=latest
+# The Claude Code CLI version, pinned so a CLI release never changes the agents under a running host. Move it by PR;
+# LEGION_CLAUDE_CODE_VERSION in legion.env overrides it on one host.
+ARG CLAUDE_CODE_VERSION=2.1.302
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates curl git jq ripgrep gnupg ${EXTRA_APT} \
