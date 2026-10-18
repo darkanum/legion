@@ -1,0 +1,2 @@
+# The host packages that more than one agent needs. PyJWT signs the GitHub App JWT (shared/lib/github_app.py).
+PyJWT[crypto]==2.10.1

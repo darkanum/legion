@@ -247,6 +247,31 @@ A hold emits `orobas.budget.reached` once per reason; the heads keep waiting.
 
 The turns, timeouts and efforts of each stage live in `stages.py` and change by PR.
 
+## Try it without posting
+
+The safest first run on a new repository is a dry run. It reads the PR, runs Gate 0 and the whole ladder in the
+sandbox, then prints the review state, the inline comments, the body and the report, and posts nothing: no review,
+no comment, no label, no state file. It still calls the model, so it costs what a review costs.
+
+```sh
+sudo -i
+set -a; source /opt/legion/legion.env; set +a
+/opt/legion/venv/bin/python /opt/legion/repo/orobas/host/reviewer.py --dry-run 12
+```
+
+The run folder it prints stays in `/opt/legion/workspace/orobas/runs/`. To change the host logic (`verdict.py`,
+`report.py`) and see the new result with no model call, replay that run:
+
+```sh
+/opt/legion/venv/bin/python /opt/legion/repo/orobas/host/reviewer.py --dry-run 12 --from-run /opt/legion/workspace/orobas/runs/12-20261019101500
+```
+
+To try a rulebook of your own, push it to `.legion/rules/` on the base branch and dry-run a PR: each file there takes
+the place of the starter file of the same name, and every file you do not add stays the starter one.
+
+With `OROBAS_ENABLED=false` the service keeps running and leaves every GitHub event in its inbox; turn it back on
+(`./setup.sh orobas`) and it reviews what arrived meanwhile.
+
 ## Failure handling
 
 - **A failed review** (no status, a broken Gate 1 or Gate 3, a non-zero exit) puts the head back to `waiting` for one

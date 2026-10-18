@@ -81,6 +81,21 @@ scope of every patch for that reason; see [MARBAS.md](MARBAS.md).
 sandbox uses it to clone and to run `gh issue view`. The host also uses it for a few reads that need no write access,
 such as the Slack user map.
 
+### Or a GitHub App
+
+Instead of a bot account, Legion can run as a GitHub App, which needs no seat and no long-lived token:
+
+1. Create an App with the repository permissions in the table above (Commit statuses replaces Checks: an App may
+   also have **Checks: read**), no webhook of its own, and install it on the repository.
+2. Download its private key to `/opt/legion/secrets/github_app_key.pem` (mode 600).
+3. Set `LEGION_GITHUB_APP_ID` and `LEGION_GITHUB_APP_INSTALLATION_ID` in `legion.env` (the installation id is the
+   number at the end of the App's installation URL).
+
+The hosts then mint an installation token from the key (`shared/lib/github_app.py`, which needs `PyJWT[crypto]` from
+`shared/host/requirements.txt`) and mint it again five minutes before it ends. Each sandbox run gets its own token
+minted with read-only permissions (Contents, Issues, Pull requests, Metadata), whatever the App may do. Commits,
+PRs and reviews come from `<app-slug>[bot]`. `github_host_token` and `github_sandbox_token` are not needed.
+
 ### The Claude token
 
 Run `claude setup-token` on any machine where you are logged in to Claude Code, and store the token it prints in
@@ -242,7 +257,7 @@ Every long-lived service sends a heartbeat every five minutes (`hooks.heartbeat`
 | --- | --- |
 | `MARBAS_ENABLED=false` | No new bug thread starts; Marbas says so in the thread. Open PRs keep their deploy watch and proof. |
 | `VALAC_ENABLED=false` | The patrol starts and exits at once. Off by default. |
-| `OROBAS_ENABLED=false` | No new review. The inbox is still drained, and the events are dropped. |
+| `OROBAS_ENABLED=false` | No new review. The events wait in the inbox, and turning it back on reviews them. |
 | `legion:skip` label on a PR | Orobas does not review it. |
 | `systemctl stop <unit>` | Stops the service. `systemctl stop valac-patrol.timer` stops the schedule. |
 

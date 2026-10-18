@@ -24,6 +24,32 @@ ATTRIBUTION = re.compile(rf"(?:generated|written|created|authored) (?:with|by|us
                          rf"|co-authored-by:[^\n]*{AI_TOOLS}", re.IGNORECASE)
 NEXT_PAGE = re.compile(r'<([^>]+)>;\s*rel="next"')
 API = "https://api.github.com/"
+HOST_TOKEN = "github_host_token"
+SANDBOX_TOKEN = "github_sandbox_token"
+
+
+def token(token_file: str = HOST_TOKEN) -> str:
+    """The token behind a token file name: an App installation token when Legion runs as a GitHub App (read-only for
+    the sandbox name), else the file in the secrets folder."""
+    import github_app  # here, so github_app can import config and paths without a cycle
+
+    if github_app.enabled() and token_file in (HOST_TOKEN, SANDBOX_TOKEN):
+        return github_app.token(read_only=token_file == SANDBOX_TOKEN)
+    return (SECRETS / token_file).read_text().strip()
+
+
+_me: dict | None = None
+
+
+def me() -> dict:
+    """{"login", "id"} of the account the host acts as: the App's bot user, or the owner of the host token.
+    `GET /user` answers 401 to an App installation token, so an App asks for its bot user instead."""
+    global _me
+    if _me is None:
+        import github_app
+
+        _me = github_app.identity() if github_app.enabled() else github("user")
+    return _me
 
 
 def github(path: str, token_file: str = "github_host_token", method: str = "GET", body: dict | None = None) -> object:
@@ -47,7 +73,7 @@ def call(url: str, token_file: str = "github_host_token", method: str = "GET", b
         method=method,
         data=json.dumps(body).encode() if body is not None else None,
         headers={
-            "Authorization": f"Bearer {(SECRETS / token_file).read_text().strip()}",
+            "Authorization": f"Bearer {token(token_file)}",
             "Accept": "application/vnd.github+json",
             "Content-Type": "application/json",
             "X-GitHub-Api-Version": "2022-11-28",
@@ -61,8 +87,8 @@ def call(url: str, token_file: str = "github_host_token", method: str = "GET", b
 
 def git_auth(token_file: str = "github_host_token") -> str:
     """A `git -c` value that sends the token as a header: not in the URL, so a git error never prints it."""
-    token = (SECRETS / token_file).read_text().strip()
-    return f"http.extraHeader=Authorization: Basic {base64.b64encode(f'x-access-token:{token}'.encode()).decode()}"
+    secret = token(token_file)
+    return f"http.extraHeader=Authorization: Basic {base64.b64encode(f'x-access-token:{secret}'.encode()).decode()}"
 
 
 def team_logins() -> set[str]:

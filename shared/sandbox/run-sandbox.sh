@@ -32,6 +32,19 @@ sandbox_legion_env() {
   echo "CLAUDE_CODE_OAUTH_TOKEN=$(cat "$LEGION_SECRETS/claude_oauth_token")"
 }
 
+# The sandbox's read-only GitHub token, as GITHUB_TOKEN and GH_TOKEN: minted per run with read-only permissions when
+# Legion runs as a GitHub App, else the github_sandbox_token file.
+sandbox_github_env() {
+  local token
+  if [ -n "${LEGION_GITHUB_APP_ID:-}" ] && [ -n "${LEGION_GITHUB_APP_INSTALLATION_ID:-}" ]; then
+    token=$("$LEGION_VENV/bin/python" "$LEGION_REPO_DIR/shared/lib/github_app.py" sandbox-token) || return 1
+  else
+    token=$(cat "$LEGION_SECRETS/github_sandbox_token")
+  fi
+  echo "GITHUB_TOKEN=$token"
+  echo "GH_TOKEN=$token"
+}
+
 # The read-only telemetry tokens, only when the host has them: a run with none of them reads code and CI alone.
 sandbox_telemetry_env() {
   if [ -s "$LEGION_SECRETS/axiom_token" ]; then

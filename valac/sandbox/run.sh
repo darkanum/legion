@@ -10,7 +10,6 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 source "$HERE/../../shared/paths.sh"
 # shellcheck source=../../shared/sandbox/run-sandbox.sh
 source "$HERE/../../shared/sandbox/run-sandbox.sh"
-SECRETS=$LEGION_SECRETS
 RUNS=$LEGION_WORKSPACE/valac/runs
 
 usage="usage: run.sh --patrol | run.sh <issue> --plan | run.sh <issue> --from-plan <plan.json>"
@@ -50,8 +49,7 @@ sandbox_env_file
 {
   echo "ISSUE=$ISSUE"
   echo "MODE=$MODE"
-  echo "GITHUB_TOKEN=$(cat "$SECRETS/github_sandbox_token")"
-  echo "GH_TOKEN=$(cat "$SECRETS/github_sandbox_token")"
+  sandbox_github_env
   echo "ANTHROPIC_MODEL=$LEGION_MODEL"
   echo "MAX_TURNS=$MAX_TURNS"
   echo "VALAC_HISTORY_DAYS=${VALAC_HISTORY_DAYS:-45}"

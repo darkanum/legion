@@ -14,8 +14,10 @@ cp "$generated/allowlist" proxy/allowlist.generated
 cp "$generated/managed-settings.json" managed-settings.generated.json
 
 docker build -q -t legion-proxy:local -f proxy/Dockerfile proxy >/dev/null
-docker build -q -t legion-sandbox:local -f Dockerfile \
-  --build-arg "EXTRA_APT=${LEGION_SANDBOX_APT:-}" . >/dev/null
+build_args=(--build-arg "EXTRA_APT=${LEGION_SANDBOX_APT:-}")
+# The Dockerfile pins the Claude Code version; a host may hold another one while it tries a new release.
+[ -z "${LEGION_CLAUDE_CODE_VERSION:-}" ] || build_args+=(--build-arg "CLAUDE_CODE_VERSION=$LEGION_CLAUDE_CODE_VERSION")
+docker build -q -t legion-sandbox:local -f Dockerfile "${build_args[@]}" . >/dev/null
 if [ -n "${LEGION_SANDBOX_DOCKERFILE:-}" ]; then
   # The extension starts FROM legion-sandbox:local and keeps its user, its settings and its entrypoints.
   docker build -q -t legion-sandbox:local -f "$LEGION_SANDBOX_DOCKERFILE" "$(dirname "$LEGION_SANDBOX_DOCKERFILE")" >/dev/null
