@@ -1,0 +1,7 @@
+{
+  "agent": "valac",
+  "events": {
+    "pull_request": ["closed"],
+    "issues": ["closed"]
+  }
+}

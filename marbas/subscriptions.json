@@ -1,0 +1,10 @@
+{
+  "agent": "marbas",
+  "events": {
+    "pull_request": ["closed"],
+    "pull_request_review": ["submitted"],
+    "check_suite": ["completed"],
+    "workflow_run": ["completed"],
+    "deployment_status": null
+  }
+}

@@ -1,0 +1,15 @@
+# The Marbas Slack listener. It runs as root because run.sh starts Docker containers.
+# Every switch lives in /opt/legion/legion.env (MARBAS_*); change it there, then run ./setup.sh marbas.
+[Unit]
+Description=Marbas Slack listener
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=/opt/legion/legion.env
+ExecStart=/opt/legion/venv/bin/python /opt/legion/repo/marbas/host/listener.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

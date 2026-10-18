@@ -1,0 +1,15 @@
+# Orobas, the PR review agent. It runs as root because run.sh starts Docker containers.
+# Every switch lives in /opt/legion/legion.env (OROBAS_*); change it there, then run ./setup.sh orobas.
+[Unit]
+Description=Orobas PR review agent
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=/opt/legion/legion.env
+ExecStart=/opt/legion/venv/bin/python /opt/legion/repo/orobas/host/reviewer.py
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target
