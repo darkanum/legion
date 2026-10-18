@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Written by shared/sandbox/setup.sh before each image build, from legion.env.
+shared/sandbox/managed-settings.generated.json
+shared/sandbox/proxy/allowlist.generated
+
+# A host's settings and secrets never enter git.
+legion.env
+secrets/
+*.token
