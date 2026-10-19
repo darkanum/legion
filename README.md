@@ -32,7 +32,28 @@ Ars Goetia whose office matches what the software does.
 | <img src="brand/icons/valac.svg" width="32" height="32" alt="Valac mark"> | **Valac** | A president who tells where serpents are hidden and delivers them harmless. | Patrols the production logs on a schedule. It opens one GitHub issue per new defect, with the query and the counts as evidence, and can open the PR that fixes it. [Architecture](docs/VALAC.md) |
 | <img src="brand/icons/orobas.svg" width="32" height="32" alt="Orobas mark"> | **Orobas** | A prince who gives true answers of things past, present and to come, and never deceives. | Reviews every ready PR through a ladder of gates and lanes, each run by a Goetia persona. The host, never a model, decides the review state. [Architecture](docs/OROBAS.md) |
 
+## See it work
+
+Three moments of one made-up shop, `acme/shop`. Every word in them comes from the host code: `brand/examples.py`
+replays the agents with Slack and GitHub stubbed and renders what they would post, so the images follow the real
+message formats.
+
+**Marbas** takes a bug thread, posts a plan, and opens the PR once an engineer approves it.
+
+<img src="brand/examples/marbas-thread.png" alt="A Slack thread: a reporter links issue 412; Marbas claims it, posts a plan with what it found, the cause, the fix and the proof; an engineer approves; Marbas opens PR 418" width="100%">
+
+**Orobas** reviews that PR. The Tests lane, run by Foras, finds that the new test would pass without the fix.
+
+<img src="brand/examples/orobas-report.png" alt="A pull request comment: Orobas's report with the ladder table, Furcas, Bathin, Zagan, Foras and Dantalion, one blocker from the tests lane, the verdict and the cost of the review" width="100%">
+
+**Valac**, on its morning patrol, finds a defect nobody reported and opens an issue with the query as evidence.
+
+<img src="brand/examples/valac-issue.png" alt="A GitHub issue opened by Valac: what happened, an evidence table with the dataset, event, rows, users and window, the APL query, where in the code, and the proposed fix" width="100%">
+
 ## How it works
+
+The [architecture](docs/ARCHITECTURE.md) draws Legion in the C4 model: the system in its context, the containers on
+the host, one dynamic view per daemon, and how the three meet on GitHub without ever calling each other.
 
 ```mermaid
 flowchart LR
@@ -53,8 +74,9 @@ flowchart LR
    `legion-sandbox:local` on an internal Docker network, with read-only GitHub and telemetry tokens and a Claude Code
    token, and a wall clock.
 4. The container writes its result to a mounted folder: a `result.json`, a `fix.patch`, gate files. It never pushes.
-5. The host checks the result. For a patch, it refuses any file the approved plan does not list and any guarded path,
-   then applies the patch in a temporary clone, commits as the bot account and pushes. For a review, it computes the
+5. The host checks the result. For a patch, it applies it in a temporary clone, then refuses it when any path git
+   staged is outside the approved plan or on a guarded path; only then does it commit as the bot (an account or a
+   GitHub App) and push. For a review, it computes the
    review state from the gate files and posts it.
 
 ## Safety model
