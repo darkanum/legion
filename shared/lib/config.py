@@ -50,6 +50,16 @@ SLACK_USER_MAP = text("LEGION_SLACK_USER_MAP", ".github/slack-user-map.json")
 # The run log: one Axiom dataset for every agent, one `service` per agent. No token turns it off.
 LOG_DATASET = text("LEGION_LOG_DATASET", "legion")
 ENVIRONMENT = text("LEGION_ENVIRONMENT", "production")
+# Where the hooks service listens behind the reverse proxy: 172.17.0.1 when the proxy runs in a container.
+HOOKS_HOST = text("LEGION_HOOKS_HOST", "127.0.0.1")
+HOOKS_PORT = int(number("LEGION_HOOKS_PORT", 8645))
+
+
+def agents() -> set[str] | None:
+    """The agents this host runs (LEGION_AGENTS, a comma list), or None for every agent folder. Read at each call."""
+    return set(items("LEGION_AGENTS")) or None
+
+
 # Sent with every GitHub call.
 USER_AGENT = text("LEGION_USER_AGENT", "legion-agents")
 
