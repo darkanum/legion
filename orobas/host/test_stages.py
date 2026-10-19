@@ -60,6 +60,15 @@ class DriftTest(unittest.TestCase):
         for rule in [f"STD-0{n}" for n in range(1, 8)]:
             self.assertRegex(standards, rf"(?m)^#+ {rule}\b", rule)
 
+    def test_the_example_override_keeps_the_gate0_headings_and_uses_its_own_ids(self):
+        example = ORO.parent / "examples" / "rules"
+        standards = (example / "STANDARDS.md").read_text(encoding="utf-8")
+        for rule in [f"STD-0{n}" for n in range(1, 8)]:
+            self.assertRegex(standards, rf"(?m)^#+ {rule}\b", rule)
+        starter = (RULES / "STANDARDS.md").read_text(encoding="utf-8")
+        for rule in re.findall(r"(?m)^#+ ((?:STD|TEST)-9\d)\b", standards + (example / "LANE_TESTS.md").read_text(encoding="utf-8")):
+            self.assertNotIn(rule, starter + (RULES / "LANE_TESTS.md").read_text(encoding="utf-8"), rule)
+
     def test_every_skill_exists_and_triage_names_every_lane(self):
         for skill in stages.skills():
             self.assertTrue((SKILLS / skill / "SKILL.md").exists(), skill)

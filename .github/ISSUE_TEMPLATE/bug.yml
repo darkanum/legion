@@ -1,0 +1,46 @@
+name: Bug report
+description: Something an agent or a script does wrong.
+title: "[bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. A security problem goes to a private advisory instead: see SECURITY.md.
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options: [Marbas, Valac, Orobas, hooks service, sandbox image, setup scripts, docs, brand]
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The settings that matter (no secret values), the event or command, and what you did.
+      placeholder: |
+        1. legion.env has OROBAS_CAN_BLOCK=false
+        2. Open a PR with no linked issue
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: The log lines (journalctl -u <unit>) or the run log event. Remove tokens, emails and names first.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Legion commit or tag
+      placeholder: v0.1.0 or a commit sha
