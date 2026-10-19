@@ -69,14 +69,22 @@ stateDiagram-v2
     issue_open --> snoozed: issue closed otherwise
     pr_open --> snoozed: PR closed without a merge
     snoozed --> issue_open: back after the snooze, found again
+    deployed --> verified: a patrol a window after the merge no longer sees it
+    deployed --> regressed: a patrol a window after the merge still sees it
+    regressed --> issue_open: raised again as a new issue
 ```
 
 | State | Meaning | Counts against `VALAC_MAX_ACTIVE` |
 | --- | --- | :---: |
 | `issue_open` | An issue waits for people | yes |
 | `pr_open` | A Valac PR waits for people | yes |
-| `deployed` | Fixed. Never raised again. | |
+| `deployed` | Merged or closed as fixed; the next patrol after a full window judges it | |
+| `verified` | Gone from the logs after its fix. Never raised again. | |
+| `regressed` | Still in the logs after its fix: announced in Slack and raised again as a new issue | |
 | `snoozed` | Rejected. Ignored until `snoozedUntil`. | |
+
+A merge inside the last `VALAC_WINDOW_HOURS` waits for the next patrol, since the logs this one read may predate the
+deploy (`ledger.settle`).
 
 A run that ends without a PR keeps the finding in `issue_open` and records `lastOutcome` and `lastReason`; the issue
 stays for a person.

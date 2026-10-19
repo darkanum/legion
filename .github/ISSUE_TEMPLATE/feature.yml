@@ -1,0 +1,23 @@
+name: Feature request
+description: Something Legion should do that it does not.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do, and where Legion stops you. Start from the problem, not the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you propose
+      description: How it could work. Say which agent or part of shared/ it touches, and which setting would steer it.
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety
+      description: |
+        Legion runs a model on untrusted text. Does this give a model a new way to act (a token, a command, a path, a
+        network host)? If it does, how does the host keep the decision?

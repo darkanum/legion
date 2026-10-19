@@ -13,14 +13,18 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+import config
 from paths import REPO_DIR, SECRETS
 
 IMDS = "http://169.254.169.254/metadata/identity/oauth2/token"
 API_VERSION = "7.4"
 
 AGENTS_DIR = REPO_DIR  # each agent is a top-level folder of this repository
-# Each VM has its own repo webhook: the vault holds one per agent, the VM keeps the file name legion-hooks reads.
+# One repository webhook per host (shared/hooks/host/webhook.py), so one pair per host, whatever agents it runs.
 WEBHOOK_FILES = ["github_webhook_secret", "github_webhook_id"]
+# A GitHub App replaces the two static tokens with its key (shared/lib/github_app.py).
+TOKEN_FILES = ["github_host_token", "github_sandbox_token"]
+APP_KEY_FILE = "github_app_key.pem"
 
 
 def agent_secrets(agent: str, agents_dir: Path = AGENTS_DIR) -> list[str]:
@@ -29,10 +33,25 @@ def agent_secrets(agent: str, agents_dir: Path = AGENTS_DIR) -> list[str]:
     return [line.strip() for line in lines if line.strip() and not line.startswith("#")]
 
 
-def vault_names(agent: str, agents_dir: Path = AGENTS_DIR) -> dict[str, str]:
-    """Secret file name => Key Vault secret name, for one agent. Key Vault allows no underscore, so names use dashes."""
-    names = {file: file.replace("_", "-") for file in agent_secrets(agent, agents_dir)}
-    names.update({file: f"{file.replace('_', '-')}-{agent}" for file in WEBHOOK_FILES})
+def vault_name(file: str) -> str:
+    """Key Vault allows no underscore or dot, so a file name becomes dashes."""
+    return file.replace("_", "-").replace(".", "-")
+
+
+def vault_names(agents: list[str], agents_dir: Path = AGENTS_DIR) -> dict[str, str]:
+    """Secret file name => Key Vault secret name, for every agent of this host, each file once.
+
+    The webhook pair carries LEGION_HOSTNAME when it is set, so one vault can serve several hosts.
+    """
+    names = {file: vault_name(file) for agent in agents for file in agent_secrets(agent, agents_dir)}
+    import github_app
+
+    if github_app.enabled():
+        for file in TOKEN_FILES:
+            names.pop(file, None)
+        names[APP_KEY_FILE] = vault_name(APP_KEY_FILE)
+    suffix = f"-{vault_name(config.text('LEGION_HOSTNAME'))}" if config.text("LEGION_HOSTNAME") else ""
+    names.update({file: vault_name(file) + suffix for file in WEBHOOK_FILES})
     return names
 
 
@@ -51,24 +70,23 @@ def write_secrets(vault: str, agents: list[str], folder: Path = SECRETS, agents_
     bearer = {"Authorization": f"Bearer {token()}"}
     folder.mkdir(mode=0o700, parents=True, exist_ok=True)
     written = []
-    for agent in agents:
-        for file, name in vault_names(agent, agents_dir).items():
-            try:
-                value = get_json(f"https://{vault}.vault.azure.net/secrets/{name}?api-version={API_VERSION}", bearer)["value"]
-            except urllib.error.HTTPError as error:
-                # The webhook pair lands in the vault when the GitHub hook is created (docs/HOST.md).
-                # Without the file, hooks/setup.sh skips legion-hooks instead of starting it.
-                if error.code == 404 and file in WEBHOOK_FILES:
-                    print(f"not in the vault yet: {name}", file=sys.stderr)
-                    continue
-                raise
-            path = folder / file
-            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-            with os.fdopen(fd, "w") as out:
-                out.write(value)
-            os.chmod(path, 0o600)
-            written.append(file)
-    return sorted(set(written))
+    for file, name in vault_names(agents, agents_dir).items():
+        try:
+            value = get_json(f"https://{vault}.vault.azure.net/secrets/{name}?api-version={API_VERSION}", bearer)["value"]
+        except urllib.error.HTTPError as error:
+            # The webhook pair lands in the vault after the GitHub hook is created (docs/HOST.md).
+            # Without the file, hooks/setup.sh skips legion-hooks instead of starting it.
+            if error.code == 404 and file in WEBHOOK_FILES:
+                print(f"not in the vault yet: {name}", file=sys.stderr)
+                continue
+            raise
+        path = folder / file
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as out:
+            out.write(value)
+        os.chmod(path, 0o600)
+        written.append(file)
+    return sorted(written)
 
 
 if __name__ == "__main__":

@@ -183,10 +183,12 @@ On an Azure VM, the secrets can come from Key Vault with the VM's managed identi
 host.
 
 1. Give the VM a system-assigned managed identity with permission to get secrets from one vault.
-2. Store each secret file under its name with dashes instead of underscores (`github_host_token` becomes
-   `github-host-token`), since Key Vault allows no underscore.
-3. The webhook pair is stored per agent: `github-webhook-secret-<agent>` and `github-webhook-id-<agent>`. Store them
-   after `webhook.py` writes the files on the first run.
+2. Store each secret file under its name with dashes instead of underscores and dots (`github_host_token` becomes
+   `github-host-token`, `github_app_key.pem` becomes `github-app-key-pem`), since Key Vault allows neither. With a
+   GitHub App, store the key and not the two token files.
+3. The webhook pair is one per host, like the hook: `github-webhook-secret-<host>` and `github-webhook-id-<host>`,
+   where `<host>` is `LEGION_HOSTNAME` with dots as dashes (`agents.example.com` becomes `agents-example-com`), so one
+   vault can serve several hosts. Store them after `webhook.py` writes the files on the first run.
 4. Set `LEGION_KEY_VAULT=<vault name>` and `LEGION_AGENTS` in `legion.env`, and `LEGION_HOSTNAME`, since the vault
    step runs inside `shared/host/setup.sh`.
 

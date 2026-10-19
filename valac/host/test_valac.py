@@ -1,6 +1,7 @@
 """Run with: python3 -m unittest test_valac (no dependencies)."""
 
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -29,6 +30,32 @@ class LedgerTest(unittest.TestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
+
+    def merged(self, fingerprint, hours_ago):
+        record = ledger.opened(self.store, finding(fingerprint), 4800, NOW - 48 * 3600)
+        return ledger.closed(self.store, record, True, "merged", NOW - hours_ago * 3600)
+
+    def test_a_merged_finding_gone_from_the_logs_after_a_window_is_verified(self):
+        self.merged("aaaa1111", hours_ago=30)
+        verified, regressed = ledger.settle(self.store, set(), 24 * 3600, NOW)
+        self.assertEqual(([r["fingerprint"] for r in verified], regressed), (["aaaa1111"], []))
+        self.assertEqual(ledger.load(self.store, "aaaa1111")["state"], "verified")
+
+    def test_a_merged_finding_still_in_the_logs_regressed_and_can_be_raised_again(self):
+        self.merged("aaaa1111", hours_ago=30)
+        _, regressed = ledger.settle(self.store, {"aaaa1111"}, 24 * 3600, NOW)
+        self.assertEqual([r["fingerprint"] for r in regressed], ["aaaa1111"])
+        self.assertEqual([f["fingerprint"] for f in ledger.select([finding("aaaa1111")], self.store, NOW)], ["aaaa1111"])
+
+    def test_a_merge_inside_the_window_waits_for_the_next_patrol(self):
+        self.merged("aaaa1111", hours_ago=2)
+        self.assertEqual(ledger.settle(self.store, {"aaaa1111"}, 24 * 3600, NOW), ([], []))
+        self.assertEqual(ledger.load(self.store, "aaaa1111")["state"], "deployed")
+
+    def test_a_verified_finding_is_never_raised_again(self):
+        self.merged("aaaa1111", hours_ago=30)
+        ledger.settle(self.store, set(), 24 * 3600, NOW)
+        self.assertEqual(ledger.select([finding("aaaa1111")], self.store, NOW), [])
 
     def test_a_new_finding_over_the_floor_is_chosen_best_first(self):
         chosen = ledger.select([finding("aaaa1111", 50), finding("bbbb2222", 90), finding("cccc3333", 30)], self.store, NOW)
@@ -180,6 +207,15 @@ class PatrolTest(unittest.TestCase):
              mock.patch.object(valac, "say") as self.say, mock.patch.object(valac.config, "PACKAGE_ROOTS", ("services",)):
             valac.patrol()
         return calls, fix
+
+    def test_a_fixed_defect_back_in_the_logs_is_announced_and_raised_again(self):
+        again = finding()
+        record = ledger.opened(self.store, {**again, "fingerprint": ledger.fingerprint(again)}, 4700, time.time() - 50 * 3600)
+        ledger.closed(self.store, record, True, "the PR was merged", time.time() - 30 * 3600)
+        calls, _ = self.patrol([again])
+        self.assertEqual(ledger.load(self.store, record["fingerprint"])["issue"], 4800)
+        self.assertIn("are back in the logs", self.say.call_args_list[0].args[0])
+        self.assertEqual(len([c for c in calls if c[1] == "POST"]), 1)
 
     def test_with_every_place_taken_the_patrol_does_not_run(self):
         for number, fingerprint in enumerate(("aaaa0001", "aaaa0002", "aaaa0003")):

@@ -310,9 +310,16 @@ class ReviewTest(unittest.TestCase):
     def test_an_approval_of_an_older_commit_does_not_count(self):
         self.assertEqual(self.state([("eng", "APPROVED", "old")]), ("waiting", ""))
 
-    def test_changes_requested_by_anyone_stops_the_merge(self):
+    def test_changes_requested_by_an_engineer_hand_the_pr_over(self):
+        self.assertEqual(self.state([("eng", "CHANGES_REQUESTED", "head")]), ("changes", "eng"))
+
+    def test_changes_requested_from_outside_the_team_hold_the_merge_without_a_hand_off(self):
         self.assertEqual(self.state([("eng", "APPROVED", "head"), ("designer", "CHANGES_REQUESTED", "head")]),
-                         ("changes", "designer"))
+                         ("waiting", ""))
+
+    def test_an_engineer_change_request_wins_over_an_outside_one(self):
+        self.assertEqual(self.state([("designer", "CHANGES_REQUESTED", "head"), ("eng", "CHANGES_REQUESTED", "head")]),
+                         ("changes", "eng"))
 
     def test_a_later_approval_replaces_a_change_request(self):
         self.assertEqual(self.state([("eng", "CHANGES_REQUESTED", "old"), ("eng", "APPROVED", "head")]),

@@ -97,3 +97,25 @@ def closed(store: Path, record: dict, merged: bool, reason: str, now: float | No
         record.update(state="snoozed", snoozedUntil=now + SNOOZE_SECONDS, rejectReason=reason)
     save(store, record)
     return record
+
+
+def settle(store: Path, seen: set[str], window_seconds: float, now: float | None = None) -> tuple[list[dict], list[dict]]:
+    """After a patrol: (verified, regressed) among the merged findings.
+
+    A finding merged more than one patrol window ago is judged by this patrol: gone from the logs, it is verified;
+    still there, it regressed, and its state lets select() raise it again as a new issue. A finding merged inside the
+    window waits, since the logs it read may still predate the deploy.
+    """
+    now = time.time() if now is None else now
+    verified, regressed = [], []
+    for record in every(store):
+        if record.get("state") != "deployed" or now - record.get("mergedAt", now) < window_seconds:
+            continue
+        if record["fingerprint"] in seen:
+            record.update(state="regressed", regressedAt=now)
+            regressed.append(record)
+        else:
+            record.update(state="verified", verifiedAt=now)
+            verified.append(record)
+        save(store, record)
+    return verified, regressed

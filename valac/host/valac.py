@@ -36,6 +36,8 @@ WORKSPACE = paths.workspace(SERVICE)
 STORE = WORKSPACE / "findings"
 RUNS = WORKSPACE / "runs"
 RUN_SH = str(paths.REPO_DIR / "valac/sandbox/run.sh")
+# The hours of logs one patrol reads (the sandbox gets the same value): a merge older than this is judged by the patrol.
+WINDOW_HOURS = config.number("VALAC_WINDOW_HOURS", 24)
 OWNER_DAYS = 60
 
 log = logging.getLogger(SERVICE)
@@ -95,6 +97,20 @@ def apply_event(event: dict) -> None:
     ledger.closed(STORE, record, merged, reason)
     axiom.emit(SERVICE, "valac.finding.closed", reason, record["fingerprint"], module="valac",
                issue=record.get("issue"), pr=record.get("pr"), merged=merged)
+
+
+def settle(findings: list[dict], trace: str) -> None:
+    """Judges the merged findings by this patrol: gone from the logs is verified, still there is a regression.
+    Before select(), so a regression is raised again as a new issue in the same patrol."""
+    verified, regressed = ledger.settle(STORE, {f["fingerprint"] for f in findings}, WINDOW_HOURS * 3600)
+    for record in verified:
+        axiom.emit(SERVICE, "valac.finding.verified", f"#{record.get('issue')} is gone from the logs",
+                   record["fingerprint"], module="valac", issue=record.get("issue"), pr=record.get("pr"))
+    for record in regressed:
+        axiom.emit(SERVICE, "valac.finding.regressed", f"#{record.get('issue')} is back after its fix",
+                   record["fingerprint"], level="warn", module="valac", issue=record.get("issue"), pr=record.get("pr"))
+    if regressed:
+        say(notify.regressed([r.get("issue") for r in regressed if r.get("issue")]), trace)
 
 
 def open_prs_naming(event_type: str) -> list[int]:
@@ -212,6 +228,7 @@ def patrol() -> None:
     window = report.get("window") or {}
     for finding in findings:
         finding["fingerprint"] = ledger.fingerprint(finding)
+    settle(findings, trace)
     opened = []
     for finding in ledger.select(findings, STORE):
         finding.setdefault("evidence", {}).update(windowStart=window.get("start"), windowEnd=window.get("end"))

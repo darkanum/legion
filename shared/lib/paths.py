@@ -1,10 +1,13 @@
 """Every path on the Legion host, defined once. shared/paths.sh holds the same values for the shell scripts.
 
-LEGION_ROOT moves the whole tree, for a host whose backup covers another folder.
+LEGION_ROOT moves the whole tree, for a host whose backup covers another folder. It is the one setting read here and
+not in config.py: it locates the tree that everything else, legion.env included, lives in.
 """
 
 import os
 from pathlib import Path
+
+import config
 
 ROOT = Path(os.environ.get("LEGION_ROOT", "/opt/legion"))
 REPO_DIR = ROOT / "repo"  # the copy of this repository that the services run from
@@ -16,9 +19,8 @@ ENV_FILE = ROOT / "legion.env"  # the settings: config.py reads them from the en
 
 
 def agents_on_host() -> set[str] | None:
-    """The agents this VM runs, from LEGION_AGENTS in legion.env (a comma list, no spaces). None runs every agent."""
-    names = {name for name in os.environ.get("LEGION_AGENTS", "").split(",") if name}
-    return names or None
+    """The agents this VM runs, from LEGION_AGENTS in legion.env. None runs every agent."""
+    return config.agents()
 
 
 def workspace(agent: str) -> Path:

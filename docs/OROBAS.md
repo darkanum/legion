@@ -266,7 +266,7 @@ The run folder it prints stays in `/opt/legion/workspace/orobas/runs/`. To chang
 /opt/legion/venv/bin/python /opt/legion/repo/orobas/host/reviewer.py --dry-run 12 --from-run /opt/legion/workspace/orobas/runs/12-20261019101500
 ```
 
-To try a rulebook of your own, push it to `.legion/rules/` on the base branch and dry-run a PR: each file there takes
+To try a rulebook of your own (`examples/rules/` shows one), push it to `.legion/rules/` on the base branch and dry-run a PR: each file there takes
 the place of the starter file of the same name, and every file you do not add stays the starter one.
 
 With `OROBAS_ENABLED=false` the service keeps running and leaves every GitHub event in its inbox; turn it back on

@@ -174,6 +174,7 @@ valac/                  # log patrol to issue
 orobas/                 # PR review; orobas/rules/ holds the starter rulebook
 └── each agent: subscriptions.json, secrets.txt, setup.sh, host/, sandbox/, skills/
 docs/                   # the documentation
+examples/rules/         # a repository's own rulebook for Orobas, as an example
 brand/                  # the cover, the marks and the fonts
 ```
 
