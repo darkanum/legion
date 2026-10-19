@@ -49,6 +49,11 @@ def patrol_skipped(waiting: list[int]) -> str:
             "Close one, as fixed or as wrong, and the next patrol runs.")
 
 
+def regressed(issues: list[int]) -> str:
+    return (f":warning: {SIGNATURE} the defects of {' '.join(link(n) for n in issues)} are back in the logs after "
+            "their fix. Each one is raised again as a new issue.")
+
+
 def patrol_blocked(reason: str, cost: float | None, minutes: float | None) -> str:
     return f":warning: {SIGNATURE} patrol ended blocked: {escape(reason)}{totals(cost, minutes)}"
 

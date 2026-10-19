@@ -9,7 +9,6 @@ import hashlib
 import hmac
 import json
 import logging
-import os
 import sys
 import threading
 import time
@@ -18,13 +17,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "lib"))
 import axiom  # noqa: E402
+import config  # noqa: E402
 import github as gh  # noqa: E402
 import inbox  # noqa: E402
 import paths  # noqa: E402
 
 SERVICE = "hooks"  # the Axiom `service` and the systemd unit suffix
-HOST = os.environ.get("LEGION_HOOKS_HOST", "127.0.0.1")  # 172.17.0.1 when the reverse proxy runs in a container
-PORT = int(os.environ.get("LEGION_HOOKS_PORT", "8645"))
+HOST = config.HOOKS_HOST
+PORT = config.HOOKS_PORT
 MAX_BODY = 1_000_000
 HEARTBEAT_SECONDS = 300
 STATE = paths.workspace("hooks") / "state.json"

@@ -119,8 +119,12 @@ def review_state(pr: dict) -> tuple[str, str]:
             latest[review["user"]["login"]] = review
     team = team_logins()
     for login, review in latest.items():
-        if review["state"] == "CHANGES_REQUESTED":
+        # Only an engineer's change request hands the PR to a person, as only an engineer's approval counts.
+        if review["state"] == "CHANGES_REQUESTED" and login in team:
             return "changes", login
+    if any(review["state"] == "CHANGES_REQUESTED" for review in latest.values()):
+        # Someone outside the team asked for changes: no hand-off, but no merge either, until an engineer decides.
+        return "waiting", ""
     for login, review in latest.items():
         # An approval of an older commit does not cover a later push.
         if review["state"] == "APPROVED" and login in team and review["commit_id"] == pr["head"]["sha"]:
